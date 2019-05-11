@@ -1,0 +1,46 @@
+% ******************************* Literature Review ********************************
+
+\chapter{Literature Review}
+%
+%\ifpdf
+%\graphicspath{{Chapter2/Figs/Raster/}{Chapter2/Figs/PDF/}{Chapter2/Figs/}}
+%\else
+%\graphicspath{{Chapter2/Figs/Vector/}{Chapter2/Figs/}}
+%\fi
+\graphicspath{{LitReview/Figs/}}
+
+\section{Differential Privacy}
+Differential privacy is a mathematical technique which formalises privacy and is able to numerically quantify the level of privacy that some method provides. This is particularly useful not only from the point of view of a designer who is able to compare techniques formally but also from the point of view of a client whose data we seek to protect as this formalism enables them to choose particular settings corresponding to the level of privacy that they seek. 
+
+\mynote{Perhaps add diagram showing privacy barrier / we generally assume that the adversary is able to do anything to the data after some sort of model has been released. }
+
+\begin{definition}[$\epsilon$-Differential Privacy]
+	A randomized algorithm, $\altmathcal{A}$, is said to be $\epsilon$-differentially private if for any possible subset of outputs, $S$, and for all pairs of datasets, $(\altmathcal{D, D'})$, which differ in one entry only, the following inequality holds:
+	\begin{equation}
+	\text{Pr}(\altmathcal{A(D)} \in S) \leq e^\epsilon \text{Pr}(\altmathcal{A(D')} \in S) 
+	\end{equation}
+\end{definition}
+
+Thus, differential privacy provides privacy in the sense that the output probability densities ought to be similar (i.e. bounded by $e^{\epsilon}$) for datasets which are also similar (i.e. differ in only entry only). $\epsilon$, a positive quantity, quantifies the level of privacy provided; large values of epsilon allow the resulting output densities to differ significantly whilst small values of epsilon mean that the output densities are similar. \cite{foundations}   
+
+The key intuition behind differential privacy, noting the requirement that the algorithm is \textbf{randomized}, is to introduce noise which obscures the contribution of any particular data-point meaning that any adversary is unable to determine whether a particularly output was simply due to noise or due to a specific data-point. 
+
+Often, the above definition of differential privacy is slackened by introducing an extra privacy variable. 
+
+\begin{definition}[$(\epsilon, \delta)$-Differential Privacy]. A randomized algorithm, $\altmathcal{A}$, is said to be $(\epsilon, \delta)$ differentially private if for any possible subset of outputs, $S$, and for all datasets, $(\altmathcal{D, D'})$, which differ in one entry only, the following inequality holds:
+	\begin{equation}
+	\text{Pr}(\altmathcal{A(D)} \in S) \leq e^\epsilon \text{Pr}(\altmathcal{A(D')} \in S) + \delta
+	\end{equation}
+\end{definition}
+Similar to $\epsilon$, larger values of $\delta$ correspond to weaker privacy guarantees and $\delta=0$ corresponds to a pure $\epsilon$-differentially private algorithm. Note that it can be shown that $(\epsilon, \delta)$-DP provides a probabilistic $\epsilon$-DP guarantee with probably $1-\delta$. Additionally, it can be shown that differential privacy is immune to \emph{post-processing} i.e. without additional knowledge, it is not possible to reduce the level of privacy provided by a differentially private algorithm. \cite{foundations}
+
+A useful quantity relating to a function of some dataset is the $\ell_2$ sensitivity. 
+\begin{definition}[$\ell_2$ Sensitivity]
+	The $\ell_2$ sensitivity of function $f: \altmathcal{D} \rightarrow \mathbb{R}^n$, is denoted as $\Delta_2(f)$ and is defined as:
+	\begin{align}
+		\Delta_2(f) = \max_{\altmathcal{D, D'}} || f(\altmathcal{D}) - f(\altmathcal{D}')||_2
+	\end{align}
+	where $\altmathcal{D}$ and $\altmathcal{D'}$ differ in one entry only. 
+\end{definition}
+
+\section{Federated Learning}

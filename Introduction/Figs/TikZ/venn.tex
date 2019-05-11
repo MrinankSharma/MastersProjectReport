@@ -1,0 +1,24 @@
+\documentclass[crop, tikz]{standalone}
+\begin{document}
+\begin{tikzpicture}[scale=0.6, every node/.style={transform shape}]
+\begin{scope}[blend group = soft light]
+\fill[red!30!white, fill opacity=0.7]   ( 90:2.2) circle (4);
+\fill[green!30!white, fill opacity=0.7] (210:2.2) circle (4);
+\fill[blue!30!white, fill opacity=0.7]  (330:2.2) circle (4);
+\end{scope}
+\node[thick, color=black, font=\bfseries] at ( 90:4.5)    {Privacy};
+\node [color=black, font=\bfseries,text width = 8em] at ( 210:4.5)   {Decision making under uncertainty};
+\node[thick, color=black, font=\bfseries, text width = 8em] at (330:5)   {Distributed Training};
+\node [text width = 28em, scale=0.7, text centered] at (110:3.4)   {\emph{Dwork, Roth 2014}};
+\node [text width = 28em, scale=0.7, text centered] at (70:3.4)   {\emph{Abadi et al. 2016}};
+\node [text width = 12em, scale=0.7, text centered] at (190:4.2)   {\emph{Variational Inference}};
+\node [text width = 12em, scale=0.7, text centered] at (180:4.2)   {\emph{EP}};
+\node [text width = 12em, scale=0.7, text centered] at (230:4.2)   {\emph{MCMC Methods}};
+\node [text width = 8em, scale=0.7, text centered] at (160:2.6)   {\emph{Honkela et al. 2016}};
+\node [text width = 8em, scale=0.7, text centered, text width = 7em] at (40:2.7)   {\emph{Geyer et al. 2017}};
+\node [text width = 8em, scale=0.7, text centered, text width = 7em] at (10:2.8)   {\emph{Ryffel et al. 2018}};
+\node [text width = 12em, scale=0.7, text centered] at (-25:3.7)   {\emph{Federated Learning}};
+\node [text width = 12em, scale=0.7, text centered] at (-90:2.8)   {\emph{PVI - Bui et. al 2018}};
+\node[thick, color=black, font=\bfseries]  {This Project};
+\end{tikzpicture}
+\end{document}
