@@ -10,6 +10,7 @@
 \graphicspath{{LitReview/Figs/}}
 
 \section{Differential Privacy}
+\subsection{Preliminaries}
 Differential privacy is a mathematical technique which formalises privacy and is able to numerically quantify the level of privacy that some method provides. This is particularly useful not only from the point of view of a designer who is able to compare techniques formally but also from the point of view of a client whose data we seek to protect as this formalism enables them to choose particular settings corresponding to the level of privacy that they seek. 
 
 \mynote{Perhaps add diagram showing privacy barrier / we generally assume that the adversary is able to do anything to the data after some sort of model has been released. }
@@ -42,5 +43,172 @@ A useful quantity relating to a function of some dataset is the $\ell_2$ sensiti
 	\end{align}
 	where $\altmathcal{D}$ and $\altmathcal{D'}$ differ in one entry only. 
 \end{definition}
+For a function with a given $\ell_2$ sensitivity, the Gaussian mechanism can be used to provide an $(\epsilon, \delta)$-differential privacy guarantee. 
+\begin{theorem}[Gaussian Mechanism]
+	Let $f: \altmathcal{D} \rightarrow \mathbb{R}^n$ be a function with $\ell_2$ sensitivity $\Delta_2(f)$. Releasing $f(\altmathcal{D}) + \eta$ is $(\epsilon, \delta)$-differentially private where $\eta \sim \altmathcal{N}(0, \sigma^2)$ when:
+	\begin{equation}
+	\sigma^2 > 2 \ln (1.25/ \delta) \Delta_2^2(f)/\epsilon^2
+	\end{equation}
+\end{theorem}
+\cite{foundations}
+
+Typically, a particular process may be repeatedly applied to a dataset; a simple example being that in many machine learning problems, a loss function can be composed into a sum over data-points and gradient descent techniques repeatedly compute the gradient of the loss over all of the data-points, repeatedly updating the gradient to reduce the loss. \cite{ruder2016overview} Therefore, it is essential to be able to \emph{compose} the total loss of privacy (in terms of an overall value for $\epsilon$ and $\delta$) when a randomised algorithm is repeatedly applied. 
+
+Fortunately, there exist many schemes which allow values of $\epsilon$ and $\delta$ to be computed. The \emph{Moments Accountant} is an advanced technique which is able to `account' for and track the total privacy expenditure of a technique by tracking the moments of the privacy loss. 
+
+\subsection{The Moments Accountant}
+\begin{definition}[Privacy Loss] For neighbouring datasets, $\altmathcal{D}$ and $\altmathcal{D'}$, a stochastic algorithm, $\altmathcal{A}$ and some outcome, $S$, define the privacy loss at $S$ as
+	\begin{equation}
+	c(S; \altmathcal{A}, \altmathcal{D, D'}) \triangleq \log \frac{\Pr[ \altmathcal{A}( \altmathcal{D})=S]}{\Pr[ \altmathcal{A}(\altmathcal{D'}) = S]}
+	\end{equation}
+\end{definition}
+Intuitively, the privacy loss is large when the probability of the observed outcome is very different across neighbouring datasets, corresponding to a large absolute value of $c$. Note that since the algorithms we use are stochastic, the privacy loss is a random variable. \cite{moments_account}
+
+\begin{definition}[$\lambda$th Moment of $\altmathcal{A}$]
+	For algorithm $\altmathcal{A}$, a quantity of interest is the maximum value of the log of the moment generating function of the privacy loss. 
+	\begin{align}
+	\alpha_\altmathcal{A}(\lambda) \triangleq \max_{\altmathcal{D, D'}} \log \mathbb{E}_{S \sim \altmathcal{A(D)}} \Big \lbrace \exp \lambda c(S; \altmathcal{A}, \altmathcal{D, D'}) \Big \rbrace
+	\end{align}
+\end{definition}
+\cite{moments_account}
+\begin{theorem}[Properties of $\alpha_\altmathcal{A}(\lambda)$]
+	$\alpha_\altmathcal{A}(\lambda)$ exhibits two important properties. \begin{enumerate}
+		\item \textbf{Composability:} If the algorithm $\altmathcal{A}$ consists of a sequence of adaptive mechanisms $\altmathcal{M}_1, \ldots, \altmathcal{M}_k$, for any $\lambda$:
+		\begin{equation}
+		\alpha_\altmathcal{A}(\lambda) \leq \sum_{i=1}^k \alpha_{\altmathcal{M}_i}(\lambda)
+		\end{equation}
+		
+		\item \textbf{Tail Bound:} For any $\epsilon > 0$ and $\lambda$, the stochastic algorithm, $\altmathcal{A}$, is $(\epsilon, \delta)$-differentially private for
+		\begin{equation}
+		\delta \leq \exp(\alpha_{\altmathcal{A}}(\lambda) - \lambda \epsilon)
+		\end{equation}
+	\end{enumerate}
+\end{theorem}
+The moments accountant scheme computes $\alpha_\alpha(\altmathcal{M}_i)$ for each step for several values of $\lambda$ and uses the composability property to compute the aggregate loss. \cite{moments_account} In typical applications, either the target value of $\epsilon$ or $\delta$ is fixed at some value, and thus the tail bound property is applied to compute the best possible value of the other privacy variable, using the appropriate following equation:
+\begin{align}
+\delta &= \min_\lambda \exp(\alpha_{\altmathcal{A}}(\lambda) - \lambda \epsilon) \\
+\epsilon &= \min_\lambda \frac{1}{\lambda} (\alpha_{\altmathcal{A}}(\lambda) - \ln \delta)
+\end{align}
+
+Let $\altmathcal{D} = \lbrace \bm{x}_i \rbrace$ and $\altmathcal{D}' = \altmathcal{D} \cup \bm{x}'$ where $\bm{x} \in \altmathcal{X}$. Let $f: \altmathcal{X} \rightarrow \mathbb{R}^n$ with $||f(\cdot)||_2 \leq \Delta$. Consider the following mechanism, known as the \emph{Gaussian Mechanism with sub-sampling}
+\begin{align}
+\altmathcal{M}(\altmathcal{D}) = \sum_{i \in J} f(\bm{x}_i) + \altmathcal{N}(\bm{0}, \Delta^2 \sigma^2 \bm{I})
+\end{align}
+where $i$ is a subset of indices where each index is chosen independently with probability $q$. Without loss of generality, let $f(\bm{x}_i) = \bm{0}$ and $f(\bm{x}') = \Delta\cdot\bm{e}$ where $\bm{e}_1$ is a unit vector. Then $\altmathcal{M(D)}$ and  $\altmathcal{M(D')}$ are distributed identically other than the coordinate corresponding to $\bm{e}_1$. Considering only this direction, the output densities for the mechanism are:
+\begin{align}
+\altmathcal{M(D)} \sim \mu_0 &\triangleq \altmathcal{N}(0, \Delta^2 \sigma^2) \\ \altmathcal{M(D)'} \sim \mu_1 &\triangleq q\cdot\altmathcal{N}(\Delta, \Delta^2 \sigma^2) + (1-q)\cdot\altmathcal{N}(0, \Delta^2 \sigma^2) 
+\end{align}
+Then, $\alpha_\altmathcal{M}(\lambda)$ can be computed as:
+\begin{align}
+\alpha_\altmathcal{M}(\lambda) &= \ln \max (E_1, E_2) \\
+E_1 &= \mathbb{E}_{z \sim \mu_0} \Bigg[ \Big(\frac{\mu_0(z)}{\mu_1(z)}\Big)^\lambda \Bigg] \\
+E_2 &= \mathbb{E}_{z \sim \mu_1} \Bigg[ \Big(\frac{\mu_1(z)}{\mu_0(z)}\Big)^\lambda \Bigg]
+\end{align}
+where each integral can be evaluated using numerical integration. Both integrals must be considered since the maximum of the log moments of the privacy loss must be found, and both $\altmathcal{D}$ and $\altmathcal{D}'$ could be considered as the `original' dataset. \cite{moments_account}
+
+\textbf{Note: }the computed values of $\epsilon$ and $\delta$ are independent of the data used for the mechanism and could be pre-computed given fixed values of $\Delta$, $q$ and either $\delta$ or $\epsilon$. 
+
+\subsection{Differentially Private Stochastic Gradient Descent}
+Abadi et. al propose differentially private stochastic gradient descent by adapting stochastic gradient descent to use the Gaussian mechanism with sub-sampling to compute the gradient of some loss function. \cite{moments_account}  
+
+Algorithm \ref{alg:DP-SGD} outlines the differentially private stochastic gradient descent method. Note that the gradient clipping used in this method effectively limits the contribution of each data-points towards the gradient, bounding the $\ell_2$ sensitivity and enabling the Gaussian mechanism with sub-sampling to be applied. Noting that the noise added scales with the clipping bound, large values of the clipping bound correspond to strong, but noisy gradient signals. Abadi et. al suggest setting $c_t$ to be fixed at the median of the norms of unclipped gradients throughout the course of training as well as using a learning rate with starts off relatively large and is reduced over time. Additionally, it is remarked that $L \simeq \sqrt{N}$ is appropriate; larger values of $L$ improve the accuracy of the gradient signal but increase the privacy cost. \cite{moments_account}\mynote{Haven't mentioned privacy amplification - perhaps I outhg to here}
+
+\begin{algorithm}
+	\caption{Differentially Private Stochastic Gradient Descent (DP-SGD)}
+	\label{alg:DP-SGD}
+	\hspace*{\algorithmicindent} \textbf{Input:} Dataset $\altmathcal{D} = \lbrace \bm{x}_1, \ldots, \bm{x}_N \rbrace$, Loss function $\altmathcal{L}(\bm{\theta}) = \frac{1}{N} \sum_i \altmathcal{L}(\bm{\theta}, \bm{x}_i)$ \\
+	\hspace*{\algorithmicindent} \textbf{Parameters:} Learning Rate $\eta_t$, Clipping Bound $c_t$, Lot Size $L$, DP Noise Scale $\sigma_t$, \\ 	\hspace*{\algorithmicindent} Num. Iterations $T$ 
+	\begin{algorithmic}[1] % The number tells where the line numbering should start
+		\State Initialise $\bm{\theta}_0$ randomly. 
+		\For {$t = 1, \ldots, T$}
+		\State Take a random sample $L_t$ with sampling probability $q = L / N$
+		\ForAll {$i \in L_t$} \Comment{Compute Gradient}
+		\State $\bm{g}_t(\bm{x}_i) \leftarrow \nabla_{\bm{\theta}} \altmathcal{L}(\bm{\theta}, \bm{x}_i)$
+		\State $\tilde{\bm{g}}_t(\bm{x}_i) \leftarrow \bm{g}_t(\bm{x}_i) / \max(||\bm{g}_t(\bm{x}_i)||_2/c_t, 1)$ \Comment{Gradient Clipping}
+		\EndFor
+				\State $\tilde{\bm{g}}_t \leftarrow \frac{1}{L} [\sum_{i \in L_t} \bm{g}_t(\bm{x}_i) + \altmathcal{N}(0, \sigma_t^2 c_t^2 \bm{I})] $ \Comment{Perturb Clipped Gradient}
+				\State $\bm{\theta}_t \leftarrow \bm{\theta}_{t-1} - \eta_t \tilde{\bm{g}}_t$
+		\EndFor
+		\State \textbf{Output} $\bm{\theta}_T$ and calculate $(\epsilon, \delta)$ using the Moments Accountant. 
+	\end{algorithmic}
+\end{algorithm}
+
+In Abadi et al. (2016), this technique was applied to deep neural networks. However, this algorithm can be used as a building block to create other differentially private techniques, and indeed this technique has been applied in order to perform variational inference for non conjugate models \cite{DPVI}. 
 
 \section{Federated Learning}
+\subsection{Partitioned Variational Inference}
+\emph{Partitioned Variational Inference (PVI)} is a general framework which encompasses many variational Bayesian techniques. Assume that the dataset, $\altmathcal{D}$ has been partitioned into $M$ shards i.e. $\altmathcal{D} = \lbrace \bm{X}_1, \ldots, \bm{X}_M \rbrace$, where $\bm{X}_i = \lbrace \bm{x}_1, \ldots, \bm{x}_{N_i} \rbrace$. A probabilistic model with parameters $\bm{\theta}$ has been suggested to model this data with a known prior, $p(\bm{\theta})$ and likelihood function, $p(\bm{x}| \bm{\theta})$. The aim of Bayesian inference is to calculate the posterior density over the parameters, $p(\bm{\theta}| \altmathcal{D})$ but in general, it is not possible to compute this distribution. In variational methods,  an approximate distribution, $q(\theta)$, is used to approximate the posterior. In PVI, the proposal distribution takes the form:
+\begin{align}
+q(\bm{\theta}) = p(\bm{\theta}) \prod_{m=1}^M t_m(\bm{\theta}) \simeq \frac{1}{\altmathcal{Z}} p(\bm{\theta}) \prod_{m=1}^M p(\bm{X}_m|\bm{\theta}) = p(\bm{\theta}| \altmathcal{D})
+\end{align}
+Inspecting the above equation, it can be seen that each $t_m(\bm{\theta})$ approximates the (un-normalised) likelihood $p(\bm{X}_m | \bm{\theta})$, noting that the approximate posterior does not include a normalising constant. 
+
+\begin{algorithm}
+	\caption{Partitioned Variational Inference (PVI)}
+	\label{alg:PVI}
+	\hspace*{\algorithmicindent} \textbf{Input:} Partitioned Dataset $\altmathcal{D} = \lbrace \bm{X}_1, \ldots, \bm{X}_M \rbrace$, Prior $p(\bm{\theta})$, Family of Distributions $\altmathcal{Q}$
+	\begin{algorithmic}[1] % The number tells where the line numbering should start
+		\State Initialise approximate likelihood: \begin{align}
+			t_m^{(0)}(\bm{\theta}) \leftarrow 1\ \forall m 
+		\end{align} 
+		\State Initialise approximate posterior:
+		\begin{align}
+		q^{(0)}(\bm{\theta}) \leftarrow p(\bm{\theta})
+		\end{align} 
+		\For {$i = 1, 2, \ldots, \text{until convergence}$}
+		\State $b_i \leftarrow $ index of next approximate likelihood to update. 
+		\State Compute the new approximate likelihood:
+		\begin{align}
+		q^{(i)}(\bm{\theta}) \leftarrow  \mathop{\mathrm{argmax}}_{q(\bm{\theta}) \in \altmathcal{Q}} \int q(\bm{\theta}) \ln \frac{q^{(i-1)}(\bm{\theta}) p(\bm{X}_{b_i}|\bm{\theta})}{q(\bm{\theta}) t_{b_i}^{(i-1)}(\bm{\theta})}\ d\bm{\theta} \label{eq:local_free_energy_optimisation}
+		\end{align}
+		\State Update the approximate likelihood for the updated factor:
+		\begin{align}
+		t_{b_i}^{(i)}(\bm{\theta}) \leftarrow \frac{q^{(i)}(\bm{\theta})}{q^{(i-1)}(\bm{\theta})} t_{b_i}^{(i-1)}(\bm{\theta})
+		\end{align}
+		\EndFor
+	\end{algorithmic}
+\end{algorithm}
+
+When partitioned variational inference is used in the federated learning context, each client stores its own data partition, $\bm{X}_m$, and communicated with a central parameter server which stores the global approximate posterior. At each stage, each client maximises a \emph{local} free energy. \cite{PVI} 
+
+\begin{definition}[Local Free Energy]
+	The local free energy is defined as:
+	\begin{align}
+	\altmathcal{F}_{b_i}^{(i)}(q(\bm{\theta})) = \int q(\bm{\theta}) \ln \frac{q^{(i-1)}(\bm{\theta}) p(\bm{X}_{b_i}|\bm{\theta})}{q(\bm{\theta}) t_{b_i}^{(i-1)}(\bm{\theta})}\ d\bm{\theta}
+	\end{align}
+\end{definition}
+It can be shown that the local free energy optimisation (Eq. \ref{eq:local_free_energy_optimisation}) is equivalent to the following $\altmathcal{KL}$ optimisation:
+\begin{align}
+q^{(i)}(\bm{\theta}) \leftarrow  \mathop{\mathrm{argmax}}_{q(\bm{\theta}) \in \altmathcal{Q}} \altmathcal{KL}(q(\bm{\theta}) || \hat{p}^{(i)}_{b_i}(\bm{\theta}))
+\end{align}
+where $\hat{p}^{(i)}_{b_i}(\bm{\theta})$ is known as the \emph{tilted distribution} and is defined as:
+\begin{align}
+\hat{p}^{(i)}_{b_i}(\bm{\theta}) &= \frac{1}{\altmathcal{Z}^{(i)}_{b_i}} \frac{q^{(i-1)}(\bm{\theta})}{t_{b_i}^{(i-1)}(\bm{\theta})} p(\bm{X}_{b_i}|\bm{\theta}) \\ &=  \frac{1}{\altmathcal{Z}^{(i)}_{b_i}} p(\bm{\theta}) p(\bm{X}_{b_i}| \bm{\theta}) \prod_{m \neq b_i} t_m^{(i-1)}(\bm{\theta})
+\end{align}
+which can be interpreted as a local estimate of the posterior for client $b_i$, using the exact local likelihood and approximate likelihood terms for the data partitions held at other clients.  
+
+In standard variational inference, a global free energy, depending on the entire dataset is maximised. 
+\begin{definition}[Global Free Energy]
+	The global free energy is defined as:
+	\begin{align}
+	\altmathcal{F}(q(\bm{\theta})) = \int q(\bm{\theta}) \ln \frac{p(\bm{\theta})\prod_{m=1}^M p(\bm{X}_m | \bm{\theta})}{q(\bm{\theta})}\ d\bm{\theta}
+	\end{align}
+\end{definition}
+Maximising this free energy is equivalent to minimising the $\altmathcal{KL}$ divergence between the approximate posterior and the true posterior. \cite{Bishop:2006}
+
+Now we return to the partitioned variational inference setting.
+\begin{theorem}[Properties of PVI]
+	Consider the approximate posterior at convergence $q^*(\bm{\theta}) = p(\bm{\theta}) \prod_{m=1}^M t_m^{*}(\bm{\theta})$. Then:
+	\begin{enumerate}
+		\item The sum of local free energies is the global free energy:
+		\begin{align}
+		\sum_{m=1}^M \altmathcal{F}_m(q^*(\bm{\theta})) = \altmathcal{F}(q^*(\bm{\theta}))
+		\end{align}
+		\item Optimising the local free energies optimises the global free energy:
+		\begin{align}
+		q^*(\theta) = \mathop{\mathrm{argmax}}_{q(\bm{\theta}) \in \altmathcal{Q}} \altmathcal{F}_m(q(\bm{\theta}))\ \forall m \Rightarrow q^*(\theta) = \mathop{\mathrm{argmax}}_{q(\bm{\theta}) \in \altmathcal{Q}} \altmathcal{F}(q(\bm{\theta}))
+		\end{align}
+	\end{enumerate}
+\end{theorem}
+
+The above properties of PVI motivate the scheme and suggest that it may provide reasonable result. \cite{PVI} \mynote{perhaps remove this, may have gone into too much depth here. }
