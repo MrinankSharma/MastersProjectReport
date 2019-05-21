@@ -28,7 +28,9 @@ The key intuition behind differential privacy, noting the requirement that the a
 
 Often, the above definition of differential privacy is slackened by introducing an extra privacy variable. 
 
-\begin{definition}[$(\epsilon, \delta)$-Differential Privacy]. A randomized algorithm, $\altmathcal{A}$, is said to be $(\epsilon, \delta)$ differentially private if for any possible subset of outputs, $S$, and for all datasets, $(\altmathcal{D, D'})$, which differ in one entry only, the following inequality holds:
+\begin{definition}[$(\epsilon, \delta)$-Differential Privacy]
+	\label{def:epdp}
+	 A randomized algorithm, $\altmathcal{A}$, is said to be $(\epsilon, \delta)$ differentially private if for any possible subset of outputs, $S$, and for all datasets, $(\altmathcal{D, D'})$, which differ in one entry only, the following inequality holds:
 	\begin{equation}
 	\text{Pr}(\altmathcal{A(D)} \in S) \leq e^\epsilon \text{Pr}(\altmathcal{A(D')} \in S) + \delta
 	\end{equation}
@@ -48,7 +50,9 @@ For a function with a given $\ell_2$ sensitivity, the Gaussian mechanism can be 
 	Let $f: \altmathcal{D} \rightarrow \mathbb{R}^n$ be a function with $\ell_2$ sensitivity $\Delta_2(f)$. Releasing $f(\altmathcal{D}) + \eta$ is $(\epsilon, \delta)$-differentially private where $\eta \sim \altmathcal{N}(0, \sigma^2)$ when:
 	\begin{equation}
 	\sigma^2 > 2 \ln (1.25/ \delta) \Delta_2^2(f)/\epsilon^2
+	\label{eq:litreview-GaussianMech}
 	\end{equation}
+	when $\epsilon \in (0,1)$.
 \end{theorem}
 \cite{foundations}
 
@@ -63,6 +67,8 @@ Fortunately, there exist many schemes which allow values of $\epsilon$ and $\del
 	\end{equation}
 \end{definition}
 Intuitively, the privacy loss is large when the probability of the observed outcome is very different across neighbouring datasets, corresponding to a large absolute value of $c$. Note that since the algorithms we use are stochastic, the privacy loss is a random variable. \cite{moments_account}
+
+\mynote{Define differential privacy as a bound on privacy loss}
 
 \begin{definition}[$\lambda$th Moment of $\altmathcal{A}$]
 	For algorithm $\altmathcal{A}$, a quantity of interest is the maximum value of the log of the moment generating function of the privacy loss. 
@@ -163,7 +169,7 @@ Inspecting the above equation, it can be seen that each $t_m(\bm{\theta})$ appro
 		\end{align}
 		\State Update the approximate likelihood for the updated factor:
 		\begin{align}
-		t_{b_i}^{(i)}(\bm{\theta}) \leftarrow \frac{q^{(i)}(\bm{\theta})}{q^{(i-1)}(\bm{\theta})} t_{b_i}^{(i-1)}(\bm{\theta})
+		t_{b_i}^{(i)}(\bm{\theta}) \leftarrow \frac{q^{(i)}(\bm{\theta})}{q^{(i-1)}(\bm{\theta})} t_{b_i}^{(i-1)}(\bm{\theta}) \label{eq:update_likelihood}
 		\end{align}
 		\EndFor
 	\end{algorithmic}
@@ -174,12 +180,12 @@ When partitioned variational inference is used in the federated learning context
 \begin{definition}[Local Free Energy]
 	The local free energy is defined as:
 	\begin{align}
-	\altmathcal{F}_{b_i}^{(i)}(q(\bm{\theta})) = \int q(\bm{\theta}) \ln \frac{q^{(i-1)}(\bm{\theta}) p(\bm{X}_{b_i}|\bm{\theta})}{q(\bm{\theta}) t_{b_i}^{(i-1)}(\bm{\theta})}\ d\bm{\theta}
+	\altmathcal{F}_{b_i}^{(i)}(q(\bm{\theta})) = \int q(\bm{\theta}) \ln \frac{q^{(i-1)}(\bm{\theta}) p(\bm{X}_{b_i}|\bm{\theta})}{q(\bm{\theta}) t_{b_i}^{(i-1)}(\bm{\theta})}\ d\bm{\theta} \label{eq:def-local-free-energy}
 	\end{align}
 \end{definition}
 It can be shown that the local free energy optimisation (Eq. \ref{eq:local_free_energy_optimisation}) is equivalent to the following $\altmathcal{KL}$ optimisation:
 \begin{align}
-q^{(i)}(\bm{\theta}) \leftarrow  \mathop{\mathrm{argmax}}_{q(\bm{\theta}) \in \altmathcal{Q}} \altmathcal{KL}(q(\bm{\theta}) || \hat{p}^{(i)}_{b_i}(\bm{\theta}))
+q^{(i)}(\bm{\theta}) \leftarrow  \mathop{\mathrm{argmax}}_{q(\bm{\theta}) \in \altmathcal{Q}} \altmathcal{KL}(q(\bm{\theta}) || \hat{p}^{(i)}_{b_i}(\bm{\theta})) \label{eq:free_energy_kl}
 \end{align}
 where $\hat{p}^{(i)}_{b_i}(\bm{\theta})$ is known as the \emph{tilted distribution} and is defined as:
 \begin{align}

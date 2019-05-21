@@ -1,6 +1,6 @@
 % ******************************* Introduction ********************************
 
-\chapter{Results \& Discussion}
+\chapter{Case Study: Bayesian Linear Regression}
 %
 %\ifpdf
 %\graphicspath{{Chapter2/Figs/Raster/}{Chapter2/Figs/PDF/}{Chapter2/Figs/}}
@@ -8,3 +8,202 @@
 %\graphicspath{{Chapter2/Figs/Vector/}{Chapter2/Figs/}}
 %\fi
 \graphicspath{{Results/Figs}}
+
+Here, both dataset and data-point level DP-PVI is applied to a Gaussian linear regression model. 
+\section{Preliminaries}
+\mynote{Unsure how much detail I ought to give here}
+\subsection{Model Definition}
+Data at each client is generated according to:
+\begin{align}
+y_i = \theta x_i + \epsilon_i \hspace{1cm} \epsilon_i \stackrel{iid}{\sim} \altmathcal{N}(0, \sigma_e^2)
+\end{align}
+where $\theta$ is a fixed, unknown parameter which is the same for every client. Each client has observations, $\bm{X}_m = \lbrace (x_i^{(m)}, y_i^{(m)}) \rbrace_{i=1}^{N_m} = (\bm{x}_m, \bm{y}_m)$. Denote the entire dataset as $\altmathcal{D} = \lbrace \bm{X}_m \rbrace_{m=1}^{M}$. A Gaussian prior is placed on $\theta$:
+\begin{align}
+p(\theta) = \altmathcal{N}(\mu_\theta, \sigma_\theta^2)
+\end{align}
+The approximate likelihood factors take the form:
+\begin{align}
+	t_i(\theta) \propto  \altmathcal{N}(\mu_i, \sigma_i^2)
+\end{align}
+meaning that the approximate posterior, $q(\theta)$, is a Gaussian distribution. The aim is to find a $q(\theta)$ which is a good approximation to $p(\theta | \altmathcal{D})$. Note that this posterior distribution is also a Gaussian distribution.
+
+It is useful to express the univariate Gaussian distribution using \emph{natural parameters}. 
+\begin{align}
+\altmathcal{N}(x| \mu, \sigma^2) &= \frac{1}{\sqrt{2\pi \sigma^2}} \exp \Big(-\frac{1}{2\sigma^2}(x - \mu)^2 \Big) \nonumber\\
+&= \frac{1}{\sqrt{2\pi}} \exp \Bigg( \underbrace{\begin{bmatrix}
+1/\sigma^2 \\ \mu/\sigma^2
+\end{bmatrix}}_{\bm{\eta}}\cdot \underbrace{\begin{bmatrix}
+-x^2/{2} \\ x
+\end{bmatrix}}_{\bm{T}(x)}  - (\frac{\mu^2}{2\sigma^2} - \ln \sigma) \Bigg) \nonumber \\
+&= h \exp [\bm{\eta} \cdot \bm{T}(x) - A(\bm{\eta})]
+\end{align}
+with
+\begin{align}
+A(\bm{\eta}) = \frac{\eta_2^2}{2\eta_1} - \frac{1}{2}\ln \eta_1
+\end{align}
+
+A consequence of this representation is that the product of two Gaussian distributions is that:
+\begin{align}
+\altmathcal{N}(x| \bm{\eta}_1 ) \cdot \altmathcal{N}(x| \bm{\eta}_2) &\propto \altmathcal{N}(x| \bm{\eta}_1 + \bm{\eta}_2) \\
+\altmathcal{N}(x| \bm{\eta}_1 ) /  \altmathcal{N}(x| \bm{\eta}_2) &\propto \altmathcal{N}(x| \bm{\eta}_1 - \bm{\eta}_2)
+\end{align}
+which may be seen by direct substitution. Note that the parameter $\eta_1 = 1/\sigma^2$ is known as the \emph{precision}. 
+
+\subsection{Analytical Update Equations}
+For this model, the update equations given by Equations \eqref{eq:local_free_energy_optimisation} and \eqref{eq:update_likelihood} are analytical.
+
+Recall Eq. \eqref{eq:free_energy_kl} which reformulates the free energy maximisation as a $\altmathcal{KL}$ minimisation between $q$ and the tilted distribution. Let $j$ be the client index. This $\altmathcal{KL}$ is minimised when $q(\theta)$ is exactly equal to $\hat{p}_j^{(i)}(\theta)$. The tilted distribution takes the form
+\begin{align}
+\hat{p}^{(i)}_{m}(\theta) &\propto  \frac{q^{(i-1)}(\theta)}{t_{m}^{(i-1)}(\theta)} p(\bm{X}_{m}| \theta)\nonumber \\
+&\propto \underbrace{\altmathcal{N}(\theta| \bm{\eta}_q^{(i-1)} - \bm{\eta}_m^{(i-1)})}_{\text{`prior'}} \overbrace{p(\bm{X}_{m}| \theta)}^{\text{likelihood}}
+= \altmathcal{N}(\theta| \tilde{\bm{\eta}}) 
+\end{align}
+with
+\begin{align}
+\tilde{\eta}_1 &= \eta_{q, 1}^{(i-1)} - \eta_{m, 1}^{(i-1)} + \frac{\bm{x}_m^T \bm{x}_m}{\sigma_e^2} \label{eq:exact_update_one}\\ 
+\tilde{\eta}_2 &= \eta_{q, 2}^{(i-1)} - \eta_{m, 2}^{(i-1)} + \frac{\bm{x}_m^T \bm{y}_m}{\sigma_e^2} \label{eq:exact_update_two}
+\end{align}
+since this is equivalent to standard Bayesian linear regression, applying the equations for the exact posterior (as found in \cite{Bishop:2006}). Thus, the free energy maximisation step is equivalent to setting $\bm{\eta}_q^{(i)} = \tilde{\bm{\eta}}$ as defined above. 
+
+The natural parameters of the approximate likelihood term are now straightforward to calculate as follows:
+\begin{align}
+\bm{\eta}_{m}^{(i)} = \bm{\eta}_{q}^{(i)} + \bm{\eta}_{m}^{(i-1)}  - \bm{\eta}_{q}^{(i-1)} 
+\end{align}
+
+Note that since the approximate posterior, $q(\theta)$, must normalise, there is no need to keep track of the scale factors of the approximate likelihood terms; only the functional dependence upon $\theta$ must be stored.
+
+\subsection{Gradient of Local Free Energy}
+We now derive the gradient of the local free energy, defined in Eq. \eqref{eq:def-local-free-energy} with respect to the mean and variance of $q$. For client $m$, the free energy is written:
+\begin{align}
+\altmathcal{F}_{m}^{(i)}(q(\theta)) &= \int q(\theta) \ln \frac{q^{(i-1)}(\theta) p(\bm{X}_{m}|\theta)}{q(\theta) t_{m}^{(i-1)}(\theta)}\ d\theta \nonumber \\
+&= \altmathcal{H}[q] + \int q(\theta) \ln p(\bm{X}_m|\theta)\ d\theta + \int q(\theta) \ln \altmathcal{C} \cdot \altmathcal{N}(\theta| \bm{\eta}_q^{(i-1)} - \bm{\eta}_m^{(i-1)})\ d\theta
+\end{align}
+where $\altmathcal{H}[q]$ is the \emph{differential entropy} of $q$ and $\altmathcal{C}$ is some constant. The differential entropy for a Gaussian random variable has a simple analytical form:
+\begin{align}
+\altmathcal{H}[q] = \frac{1}{2} (1 + \ln 2\pi \sigma_q^2)
+\end{align}
+\citep{Bishop:2006} and thus its gradients are straightforward. By substitution, the likelihood term can be written as follows:
+\begin{align}
+\int q(\theta) \ln p(\bm{X}_m|\theta)\ d\theta &= \altmathcal{C} - \frac{1}{2\sigma_e^2} \int q(\theta) \Big \lbrace \theta^2 \bm{x}_m^T \bm{x}_m - 2\theta \bm{x}_m^T \bm{y}_m \Big \rbrace\ d\theta \nonumber \\ 
+&= \altmathcal{C} - \frac{1}{2\sigma_e^2} \Big \lbrace (\mu_q^2 + \sigma_q^2) \bm{x}_m^T \bm{x}_m - 2\mu_q \bm{x}_m^T \bm{y}_m \Big \rbrace\ 
+\end{align}
+where the first and second moments of the Gaussian distribution have been directly substituted in. The gradients of this term are straightforward to evaluate. Let $\tilde{\mu}$ and $\tilde{\sigma}^2$ denote the mean and variance corresponding to $\bm{\eta}_q^{(i-1)} - \bm{\eta}_m^{(i-1)}$. Then, the final term can be written as:
+\begin{align}
+\int q(\theta) \ln \altmathcal{C} \cdot \altmathcal{N}(\theta| \bm{\eta}_q^{(i-1)} - \bm{\eta}_m^{(i-1)})\ d\theta &= \altmathcal{C} - \frac{1}{2\tilde{\sigma}^2} \int q(\theta) \lbrace \theta^2 - 2\tilde{\mu}\theta \rbrace\ d\theta \nonumber \\
+&= \altmathcal{C} - \frac{1}{2\tilde{\sigma}^2} \lbrace \sigma_q^2 + \mu_q^2 - 2\tilde{\mu} \mu_q \rbrace
+\end{align}
+Combining the above expressions and taking derivatives yields the gradients of the local free energy:
+\begin{align}
+\frac{\partial \altmathcal{F}_{m}^{(i)}(q(\theta))}{\partial \mu_q} &= -\frac{1}{\sigma_e^2} (\bm{x}_m^T \bm{x}_m \mu_q - \bm{x}_m^T \bm{y}_m) - \frac{1}{\tilde{\sigma}^2} (\mu_q - \tilde{\mu}) \\ 
+\frac{\partial \altmathcal{F}_{m}^{(i)}(q(\theta))}{\partial \sigma_q^2} &= \frac{1}{2\sigma_q^2} -\frac{1}{\sigma_e^2} (\bm{x}_m^T \bm{x}_m) - \frac{1}{\tilde{\sigma}^2}
+\end{align}
+
+\subsection{Assessing Performance}
+\mynote{We use KL blah blah blah to assess performance, is this good? no, comment on this etc}
+
+\section{Datapoint Level DP-PVI}
+\mynote{Need to explain how the data is generated}
+\subsection{DP-SGA}
+With the gradient of the free energy calculated in the previous section, Algorithm \ref{alg:DP-SGD} can be adapted to perform gradient ascent on the local free energy. Recalling Algorithm \ref{alg:PVI} and differentially private stochastic gradient ascent thus yields an algorithm which is differentially private which respect to the data-points over each data shard. 
+
+In our implementation, gradient ascent is performed on the mean and the log of the variance in order to ensure that variance remains positive; otherwise, large learning rates can give negative variances, after which gradient calculations are meaningless and the algorithm fails. Writing $\hat{\sigma}^2 = \ln \sigma_q^2$, the gradient of the free energy for the log of the variance is written:
+\begin{align}
+\frac{\partial \altmathcal{F}_{m}^{(i)}(q(\theta))}{\partial \hat{\sigma}_q^2} &= \frac{\partial \altmathcal{F}_{m}^{(i)}(q(\theta))}{\partial \sigma_q^2} \cdot \exp(\hat{\sigma}_q^2)
+\end{align}
+
+Additionally, after private gradients for the mean and  log-variance are calculated, if there magnitude exceeds a set threshold, their magnitude is reduced to this threshold value. This avoids problems with relatively learning rates causing instability during the course of training. 
+
+Fig. \ref{fig:results-dpsgd} outlines typical results for this approach produced by hand tuning hyper-parameters. We remark that the form of gradient clipping involved in the DP-SGA is problematic as there is no guarantee that the scale of gradients of different parameters is similar but clipping is performed with regards to the $\ell_2$ norm and the noise applied is isotropic. It is reassuring to see that this approach yields $\altmathcal{KL}$ divergences which are small ($~10^{-3}$), showing that we are able to achieve performance effectively equivalent to the non-private approach but the privacy cost is quite high, requiring $\epsilon \simeq 500$ for reasonable performance. 
+
+\begin{figure}
+	\includegraphics[width=\textwidth]{Results/Figs/TikZ/datapoint/dpsgd.tikz}
+	\centering
+	\caption{\label{fig:results-dpsgd} Differentially Private SGA Results. First figure outlines evolution of the natural parameters stored at the central parameter server as the number of iterations increases. The $\altmathcal{KL}$ divergence between $q(\theta)$ and the true posterior is also plotted (middle sub-plot), as is privacy guarantee, $\epsilon$, with $\delta = 10^{-5}$ fixed (bottom sub-plot). Parameters used: $\theta=2$, $\sigma_e=0.5$, $\mu_\theta = 0$, $\sigma_\theta = 5$, $\eta = 10^{-5}$, $L = 1$, $C=10$, $\sigma=1$. $5$ workers with $10$ points per worker. $50$ iterations of DP-SGA performed locally for one server update. }
+\end{figure}
+
+Fig. \ref{fig:results-ma} plots the privacy cost assuming a Gaussian mechanism with a varying sampling probability and shows there is a very large dependence of $\epsilon$ upon $q$. This figure suggests that such an approach can only give strong privacy protection when there are a large number of data-points within each data shard which would enable a small value of $q$ to also give a reliable gradient estimate. This is particularly difficult in the federated learning context as the data is distributed across clients, but will be appropriate in certain cases. 
+
+\begin{figure}
+	\includegraphics[width=0.8\textwidth]{Results/Figs/TikZ/datapoint/ma.tikz}
+	\centering
+	\caption{\label{fig:results-ma}  Privacy cost for different sampling probabilities, $q = L / N$, as a function of the number of epochs assuming a mechanism which sub-samples from each dataset. An epoch is defined as the mechanism having been run processed $\frac{1}{q}$ times i.e. $N$ data-points having been visited. }
+\end{figure}
+
+\subsection{Analytical Updates}
+An alternative approach to perform the local free energy maximisation is to use adapt the exact analytical equations to form a differentially private mechanism. Equations \eqref{eq:exact_update_one} and \eqref{eq:exact_update_two} can be modified as follows:
+\begin{align}
+\ell_{m, n} &= \sqrt{(x_{m, n}^2)^2 + (x_{m,n} y_{m,n})^2} \\
+\tilde{\eta}_1 &= \eta_{q, 1}^{(i-1)} - \eta_{m, 1}^{(i-1)} + \frac{1}{\sigma_e^2} \max \Bigg \lbrace 0, \Bigg[ \sum_{n=1}^{N_m} \frac{x_{m,n}^2}{\max(1, \ell_{m,n} / C)} + \altmathcal{N}(0, C^2 \sigma^2) \Bigg] \Bigg \rbrace \label{eq:local-pres}\\ 
+\tilde{\eta}_2 &= \eta_{q, 2}^{(i-1)} - \eta_{m, 2}^{(i-1)} + \frac{1}{\sigma_e^2} \Bigg[ \sum_{n=1}^{N_m} \frac{x_{m,n}y_{m,n}}{\max(1, \ell_{m,n} / C)} + \altmathcal{N}(0, C^2 \sigma^2) \Bigg]
+\end{align}
+which bounds the $\ell_2$ sensitivity by using clipping and applies the Gaussian mechanism with noise scaled according to the gradient clipping bound $C$. Note that a mechanism employing sub-sampling is not appropriate here as each application of the above mechanism needs to estimate the true maximum of the free energy. In Eq. \ref{eq:local-pres}, an additional clipping step is applied to ensure the contribution from the corrupted term remains positive (otherwise the precision may become negative which causes numerical problems).
+
+Additionally, it is worth nothing that the above update equations provide unbiased estimates \mynote{estimates is probably not the right word for this} for the \emph{natural parameters} of the tilted posterior, but this does not correspond to unbiased estimates of the mean and variance of the title posterior as seen in Fig. \ref{fig:results-local-bias} showing that, assuming no clipping occurs, the absolute value of the mean is slightly underestimated and the variance tends to be overestimated. 
+
+\begin{figure}
+	\includegraphics[width=\textwidth]{Results/Figs/TikZ/datapoint/bias.tikz}
+	\centering
+	\caption{\label{fig:results-local-bias}Simulation on introduced bias on titled posterior calculation. Prior, $p(\theta) = \altmathcal{N}(0, 5)$ with $\sigma_e = 0.5$, $10$ data-points spaced uniformly between in $[-1, 1]$. $N=10000$ draws of differential privacy corrupting noise (with $\sigma=1$) used to produce empirical distributions. Clipped neglected. }
+\end{figure}
+
+Since $\emph{a priori}$, it is not known that the true ranges of each value of $x$ and $y$ will be, the choice of clipping bound, $C$, is crucial. If chosen too small, the solution obtained by each maximisation is incorrect and bias is introduced into the results. However, if chosen too large, the solution will be dominated by noise. This issue could be avoided if it were possible to rescale the range and mean of numerical data, but this would also have to be done privately and is complicated by the fact that the data is distributed across client. 
+
+Fig. \ref{fig:results-local-ana} shows results obtained using this approach. It is immediately clear that increasing the clipping bound value tends to increase the variance of the $\altmathcal{KL}$ divergence, likely due to the standard deviation of the corrupting noise scaling with the clipping bound. We also note that these standard deviations are very high and inspecting the bottom left figure, there are very large differences in performance for the same parameter settings. The median being significantly lower than the mean for all values of $C$ shows that performance can be incredibly poor for certain datasets, which is far from optimal. Curiously, the best median performance achieved corresponds to $C=0.25$, the smallest value used, which gives a median $\altmathcal{KL}$ of $~22$. Fig. \ref{fig:results-local-ana-post} shows private posteriors and true posteriors corresponding to this level of $\altmathcal{KL}$ divergence, showing reasonable performance. It is worth noting that the private posteriors underestimate the precision of the true posterior and have a mean value closer to $0$, almost acting as a sort of regularisation. This method does perform worse than the DP-SGA approach (which achieves effectively the non-private solution), but achieves significantly better privacy costs. Additionally, we note that increasing the value of the clipping bound tends to decrease performance significantly as it corresponds to adding significantly larger values of noise. 
+
+\begin{figure}
+	\includegraphics[width=\textwidth]{Results/Figs/TikZ/datapoint/local-ana.tikz}
+	\centering
+	\caption{\label{fig:results-local-ana} Results obtained with data-point level differential privacy with $\epsilon_{\text{max}} = 10$ (i.e. termination after $\epsilon$ exceeds this value). Top left plot shows ratio between the true precision and obtained precision as a function of $\theta$, averaged over the last ten iterations of the DP-PVI algorithm. Top right plot shows the $\altmathcal{KL}(q||p)$ (again averaged over the ten last iterations) as a function of $\theta$. Bottom left plots show the mean, median and chosen percentiles of this averaged $\altmathcal{KL}$ divergence as a function of $C$ (across the $50$ different values of $\theta$) and the bottom right plot shows the corresponding standard deviation. $50$ random seeds used for each clipping bound value with each random seed corresponding to a specific $\theta$ sampled from the prior distribution, $p(\theta) = \altmathcal{N}(0, 5)$ and specific draw of corrupting noise. $\sigma_e = 0.5$, $\sigma=5$, $\eta=0.1$ with $M=20$ workers and $10$ data-points per worker. }
+\end{figure}
+
+\begin{figure}
+	\includegraphics[width=\textwidth]{Results/Figs/TikZ/datapoint/typicalPost.tikz}
+	\centering
+	\caption{\label{fig:results-local-ana-post} Typical posteriors obtained using the data-point level DP-PVI algorithm with analytical clipped updates. Produced with $C=2$, $\eta=0.1$, $M=20$ workers with $10$ data-points per worker. }
+\end{figure}
+
+\mynote{Need to think/discuss this argument in more detail}
+
+The value of $\theta$ has a large effect on the performance; smaller values of theta tend to give much lower values of $\altmathcal{KL}$ divergence whilst increasing the absolute value of $\theta$ gives worse performance. This can be justified as follows: firstly, noting the form of the $\altmathcal{KL}$ divergence, there is a large penalty when $p(\theta|D)$ is small and $q(\theta)$ is not, corresponding to severe penalties on differences in the mean parameter. Secondly, assuming fixed values of $\bm{x}$ and $\epsilon$, changing $\theta$ directly affects $\eta_2$ (the product of the mean and precision of the posterior) but does not affect $\eta_1$. Therefore a larger value of $\theta$ corresponds to a larger value of $\eta_1$ and thus a larger value of $\ell_{m,n}$. For moderate values of clipping bound, this results in larger values of $\theta$ giving smaller values of $\eta_1$ as can be seen (Fig. \ref{fig:results-local-ana}, top left) which are then relatively more noisy as the applied noise is isotropic. Since the mean is obtained as $\eta_1 / \eta_2$. Since the mean is calculated as $\eta_2 / \eta_1$, this results in very large fluctuations of the mean value for large $\eta_2$, and thus very large fluctuations of the $\altmathcal{KL}$ which is very sensitive to this value. When $\theta$ is small, the results mean value is also small and less sensitive to the exact value of the precision, giving this behaviour. Noting that for the largest values of $\theta$, smaller values of $C$ correspond to better $KL$ divergences provides evidence that it is fluctuations in the precision giving rise to poor $KL$ divergences as the smallest values of $C$ correspond to the smallest values of additive noise.
+
+ Indeed, increasing $C$ appears to increase the ratio between the average precision across the last $10$ iterations and the true precision, suggesting that this approach gives a systematic bias. Recalling Eq. \ref{eq:local-pres}, the cause of this bias can be seen. Assuming that $C> \ell_{m, n}\ \forall(n)$, the update can be written as:
+ \begin{align}
+ \tilde{\eta}_1 &= \eta_{q, 1}^{(i-1)} - \eta_{m, 1}^{(i-1)} + \frac{1}{\sigma_e^2} \underbrace{\max \Bigg \lbrace 0, \Bigg[ \overbrace{\sum_{n=1}^{N_m} {x_{m,n}^2}}^{\Sigma_{xx}} + \altmathcal{N}(0, C^2 \sigma^2) \Bigg] \Bigg \rbrace}_{\Delta} \nonumber \\ 
+ &=  \eta_{q, 1}^{(i-1)} - \eta_{m, 1}^{(i-1)} +  \frac{1}{\sigma_e^2} \Delta 
+ \end{align}
+ There would be no systematic bias if $\mathbb{E}[\Delta] = \Sigma_{xx}$. Taking $\bm{X}_m$ to be fixed:
+ \begin{align}
+ \Delta = \max \lbrace 0, \altmathcal{N}(\Sigma_{xx}, C^2 \sigma^2)\rbrace
+ \end{align}
+ and thus the distribution of $\Delta$ can be written by inspection as follows:
+ \begin{align}
+ p(\Delta = x) &=  \Phi \Big(\frac{-\Sigma_{xx}}{\sigma C}\Big) \delta(x) + \begin{cases}
+ 0 \hspace{0.5cm} & x \leq 0 \\
+ \altmathcal{N}(x| \Sigma_{xx}, \sigma^2 C^2) & x >0
+ \end{cases}
+ \end{align}
+ where $\Phi(\cdot)$ denotes the cumulative density function of the standard Gaussian distribution. This distribution clearly has mean larger than $\Sigma_{xx}$ as negative contributions in the first moment from are replaced with a zero contribution due to the delta function. As the value of $C$ increases, the the negative contribution which is removed increases in value, resulting in a larger bias, which matches the obtained results. \mynote{I could do the analytical maths for this and plot if, if I had time}
+ 
+ Fig. \ref{fig:results-noiseless-local-ana} shows results for the same parameter settings as Fig. \ref{fig:results-local-ana}, confirming that it is not the clipping which introduces bias in the precision estimate but rather bias introduced by the noise; the top left figure shows that the precision is only ever underestimated. As expected, increasing the clipping bound increases model performance when no noise is applied. Fig. \ref{fig:results-noiseless-typical-post} shows typical approximate posteriors obtained for the extremes of the clipping bound; large $C$ gives practically unmodified posteriors as expected whilst small values of $C$ show the previously observed pattern of underestimating the precision and absolute value of $\theta$.
+
+\begin{figure}
+	\includegraphics[width=\textwidth]{Results/Figs/TikZ/datapoint/noiseless-local-ana.tikz}
+	\centering
+	\caption{\label{fig:results-noiseless-local-ana} Results obtained with data-point level differential privacy applied \textbf{without noise} when run for the same number of iterations as Fig. \ref{fig:results-local-ana}. Top left plot shows ratio between the true precision and obtained precision as a function of $\theta$, averaged over the last ten iterations of the DP-PVI algorithm. Top right plot shows the $\altmathcal{KL}(q||p)$ (again averaged over the ten last iterations) as a function of $\theta$. Bottom left plots show the mean, median and chosen percentiles of this averaged $\altmathcal{KL}$ divergence as a function of $C$ (across the $50$ different values of $\theta$) and the bottom right plot shows the corresponding standard deviation. $50$ random seeds used for each clipping bound value with each random seed corresponding to a specific $\theta$ sampled from the prior distribution, $p(\theta) = \altmathcal{N}(0, 5)$ and specific draw of corrupting noise. $\sigma_e = 0.5$, $\eta=0.1$ with $M=20$ workers and $10$ data-points per worker. }
+\end{figure}
+
+\begin{figure}
+	\includegraphics[width=\textwidth]{Results/Figs/TikZ/datapoint/noiseless-typical-post.tikz}
+	\centering
+	\caption{\label{fig:results-noiseless-typical-post} Typical posteriors obtained using the \textbf{noiseless} data-point level DP-PVI algorithm with analytical clipped updates. Produced with $C=2$, $\eta=0.1$, $M=20$ workers with $10$ data-points per worker.}
+\end{figure}
+
+Whilst further gains in terms of reduction of the privacy expenditure could likely be made by a more comprehensive search over hyper-parameters, this scheme does not give particularly good performance in practice for this model. However, it may be practical to use this in certain contexts with a small clipping bound in order to avoid the overestimation of the precision. It is then likely that the approximate posterior formed will have a larger variance and smaller mean (in terms of absolute value) compared to the true posterior, but since the bias appears to be systematic, the machine learning practitioner may be able to correct for this or at the minimum be aware of the consequences. 
+
+\subsection{Hydrid Scheme}
+Whilst the DP-SGA scheme is able to provide performance indistinguishable from the non-private performance, it does so at relatively high privacy costs. On the other hand, analytical updates provide an approximate, heavily unbiased solution but at low privacy costs. These approaches could be combined straightforwardly, using the analytical update to initialise the DP-SGA scheme in a suitable position, which would then require fewer iterations to reach the optimum solution. 
+
+It is likely that this would achieve better privacy bounds than the DP-SGA approach at significantly lower privacy costs, though it is unclear exactly how large the privacy gains would be. It is suggested that this approach, which could be applied in general for exponential conjugate models, should be investigated further, but it is not investigated further in this report. 
+
+\section{Dataset Level DP-PVI}
+Algorithm \ref{alg:dataset-DPPVI} can applied to this probabilistic model directly using the analytical update equations derived previously. In our implementation, the approximate posterior is parametrised using it's natural parameters and thus the clipping and corruption step (Eq. \ref{eq:dp-pvi:client-update}) clipping and corrupts changes in the precision and the product of the mean and precision directly.  

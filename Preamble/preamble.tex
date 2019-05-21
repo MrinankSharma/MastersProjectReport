@@ -118,7 +118,8 @@
 
 % Add `custombib' in the document class option to use this section
 \ifuseCustomBib
-   \RequirePackage[square, numbers]{natbib} % CustomBib
+   \RequirePackage[numbers]{natbib} % CustomBib
+   \setcitestyle{authoryear}
 
 % If you would like to use biblatex for your reference management, as opposed to the default `natbibpackage` pass the option `custombib` in the document class. Comment out the previous line to make sure you don't load the natbib package. Uncomment the following lines and specify the location of references.bib file
 
@@ -165,14 +166,14 @@
 % *********************** Configure Draft Mode **********************************
 
 % Uncomment to disable figures in `draft'
-%\setkeys{Gin}{draft=true}  % set draft to false to enable figures in `draft'
+\setkeys{Gin}{draft=false}  % set draft to false to enable figures in `draft'
 
 % These options are active only during the draft mode
 % Default text is "Draft"
 %\SetDraftText{DRAFT}
 
 % Default Watermark location is top. Location (top/bottom)
-%\SetDraftWMPosition{bottom}
+\SetDraftWMPosition{bottom}
 
 % Draft Version - default is v1.0
 %\SetDraftVersion{v1.1}
@@ -197,8 +198,17 @@
 
 % my extra stuff
 \usepackage[mode=buildnew]{standalone}
-%\usepackage{tikz,pgfplots}
-%\standaloneconfig{mode=buildnew}
+\usetikzlibrary{positioning}
+\usetikzlibrary{decorations.text}
+\usetikzlibrary{decorations.pathmorphing}
+\usetikzlibrary{shapes,snakes}
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
+\usetikzlibrary{plotmarks}
+\usetikzlibrary{arrows.meta}
+\usepgfplotslibrary{patchplots}
+%\usepackage{grffile}
+\usepackage{tikzscale}
 
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{corollary}{Corollary}[theorem]
