@@ -535,7 +535,7 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 -0.02	0\\
 0	0\\
 };
-\addlegendentry{$p(\theta| \altmathcal{D})$}
+\addlegendentry{$p(\theta| \mathcal{D})$}
 
 \end{axis}
 
@@ -1365,7 +1365,7 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 7.98	0\\
 8	0\\
 };
-\addlegendentry{$p(\theta| \altmathcal{D})$}
+\addlegendentry{$p(\theta| \mathcal{D})$}
 
 \end{axis}
 
@@ -2195,7 +2195,7 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 -2.005	9.37358686569508e-176\\
 -2	1.83188882495081e-177\\
 };
-\addlegendentry{$p(\theta| \altmathcal{D})$}
+\addlegendentry{$p(\theta| \mathcal{D})$}
 
 \end{axis}
 
@@ -2625,7 +2625,7 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 2.995	4.62509352100307e-92\\
 3	2.82560264414737e-93\\
 };
-\addlegendentry{$p(\theta| \altmathcal{D})$}
+\addlegendentry{$p(\theta| \mathcal{D})$}
 
 \end{axis}
 \end{tikzpicture}%

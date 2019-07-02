@@ -1,0 +1,39 @@
+\subsection{Validity of Local Clipping}
+The dataset level DP-PVI scheme distributes the central Gaussian noise applied by the Gaussian mechanism in order to enable each client to keep track of their approximate likelihood term accurately. However, in the implementation used, updates to the precision are clipped locally at each client to ensure that the precision relating to the client approximate approximate likelihood term remains positive. This clipping means that the central update for the precision takes the following form:
+\begin{align}
+\tilde{\Delta} \eta_1 &= \sum_{m=1}^{M} \max \Bigg \lbrace -\eta_{m, 1}\ ,\ \alpha \cdot \Bigg[ \frac{\Delta \eta_{m, 1}}{\max(1, || \Delta \lambda_m||_2 / C)} + \frac{\sigma C}{\sqrt{M}} z_m \Bigg]   \Bigg \rbrace  \\\text{with }z_m &\stackrel{iid}{\sim} \altmathcal{N}(0, 1)
+\end{align}
+which due to the additional clipping step is not equivalent to the application of the Gaussian mechanism with variance $\sigma C$. A consequence of this is that the claimed privacy bounds for results of the previous section are technically incorrect. We now quantify the probability of clipping at the start of the DP-PVI algorithm and at convergence.
+
+Due to the properties of the parametrisation employed, the change of the precision of the variational distribution due to client $m$ is equal to the change of the precision of the local approximate likelihood. Recalling Eq. \eqref{label}:
+\begin{align}
+\Delta \eta_{m, 1} = \frac{\bm{x}_m ^T \bm{x_m}}{\sigma_e^2} - \eta_{m, 1}
+\end{align}
+In the absence of noise, we expect convergence when this is zero. Recalling that there are $\rho$ data-points per client and that $\mathbb{E}(x_{i}^2) = 1$ (due to Eq. \eqref{label}), it is expected that the value of the local precision at convergence is:
+\begin{align}
+\eta_{m, 1}^* \simeq \frac{\rho}{\sigma_e^2} 
+\end{align}
+The PVI scheme initialises $q(\theta)$ at the prior, corresponding to $\eta^{(0)}_{m, 1} = 0\ \forall m$. The probability that the update is truncated is therefore equivalent to the probability that it is negative. Assuming that $\Delta \eta_2 = 0$ and that $\eta_{m, 1} > C$,  the initial update is rescaled to $C$. The update random variable before truncation therefore is distributed according to $\altmathcal{N}(\alpha C, \alpha^2 \sigma^2 C^2/M)$. Therefore probability of precision clipping at initialisation is given by:
+\begin{align}
+\text{Pr}(\text{Precision Clipping at Initialisation}) \simeq \Phi \Big(\frac{-\sqrt{M} }{\sigma}\Big)
+\end{align}
+At convergence, assume that $\eta_{m, 1} \simeq \eta_{m, 1}^{(*)}$. Therefore, $\Delta \eta_{m, 1} \simeq 0$ and the update random variable is approximately distributed according to $\altmathcal{N}(0, \sigma^2 \alpha^2 C^2/M)$. Therefore, the probability of precision clipping at convergence is:
+\begin{align}
+\text{Pr}(\text{Precision Clipping at Convergence}) \simeq \Phi \Big(\frac{- \rho M }{\sigma_e^2 \alpha \sigma C}\Big)
+\end{align}
+
+\begin{figure}
+	\includegraphics[width=\textwidth]{clipping-analysis.tikz}
+	\centering
+	\caption{\label{fig:invalid-clipping} Probability of local precision clipping occurring at the start of the dataset level DP-PVI algorithm (left sub-plot) and when close to convergence (right sub-plot) for different hyper-parameter settings. Parameters used in experiments are consistent with those in the report. Left sub-plot: $\sigma = 5$. Right sub-plot: $C=5, \sigma=5, \alpha = 0.1$. $\sigma_e = 2$, which is the worst case of values considered here.}
+\end{figure}
+
+Fig. \ref{fig:invalid-clipping} plots the probability of additional clipping occurring due to the local precision becoming negative for the typical parameter settings used in this report.
+
+We remark that whilst this technically means that the privacy bounds claimed by the experiments here are incorrect, it is likely that similar performance can be obtained when correcting for this issue. Simply removing the clipping step and would yield an algorithm with correct privacy guarantees. This may yield invalid local approximate likelihood factors (and thus variational distributions) for the first few iterations of the PVI algorithm but, on average, the parameters of the variational distribution would still move towards their optimal values. For appropriate hyper-parameter settings, local precision clipping is also an incredibly rare event, and thus it is suggested that this problem has a straightforward remedy.
+
+There are many other methods to correct for this issue. For instance, the parametrisation could be altered to use the log of the variance. Another proposal is to generate noise at the server and creating an additional likelihood term at the server which would tracks the noise. Alternative, noise generation could still occur at each client and the server could recalculate the approximate likelihood terms to incorporate the overall noise applied and then communicate these terms back to each client.
+
+
+
+

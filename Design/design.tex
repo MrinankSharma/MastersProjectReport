@@ -1,0 +1,140 @@
+% ******************************* Introduction ********************************
+
+\chapter{Differentially Private Partitioned Variational Inference}
+%
+%\ifpdf
+%\graphicspath{{Chapter2/Figs/Raster/}{Chapter2/Figs/PDF/}{Chapter2/Figs/}}
+%\else
+%\graphicspath{{Chapter2/Figs/Vector/}{Chapter2/Figs/}}
+%\fi
+\graphicspath{{Design/Figs}}
+
+In this chapter, we construct different forms of \emph{Differentially Private Partitioned Variational Inference (DP-PVI)}, considering the full problem context and implications with regards to strength of privacy protection. This is a key contribution of this work.  
+
+\section{Context}
+The \emph{adversary} aims to use accessible information to glean private and sensitive information which the machine learning model has been trained with.  Recalling the PVI setting, there are a number of clients with access to their own local data shards containing sensitive information.  In the fully general context, it is assumed that:
+\begin{itemize}
+	\item The adversary has unlimited access to the trained variational distribution, $q(\bm{\theta})$ (as well as the approximate posterior throughout the course of training).  
+	\item The adversary is able to intercept messages between the central parameter server and each client. 
+	\item The adversary is able to plant concealed `enemy' clients or coerce existing clients to reveal their local data and/or plant data which is to be used to train the global model. 
+	\item The adversary is able to masquerade as the parameter server, not only sending each client messages but also reading messages from all of the clients. 
+\end{itemize}
+Fig. \ref{fig:design-context} summarises the fully generalised context of this project. 
+
+Different methods of adapting PVI will have different implications as to which parties are or are not trusted. There may be asymmetric privacy guarantees, conferring different levels of privacy depending on what the specific adversary is able to access. We will remark on these implications in the following sections. 
+
+\begin{figure}
+	\includestandalone[width=0.6\textwidth]{Design/Figs/TikZ/context}
+	\centering
+	\caption{\label{fig:design-context}Generalised Project Context Summary: each clients has local, sensitive data. We assume that the adversary has unlimited access to the global model, $q(\bm{\theta})$, and can intercept messages. A client may not know whether the parameter server is trustworthy. }
+\end{figure}
+
+\section{Forms of DP-PVI} 
+\subsection{Datapoint Level DP-PVI}
+A simple method to construct DP-PVI is to perform the local free energy optimisation (Eq. \ref{eq:local_free_energy_optimisation}) in a privacy preserving manner, for example using DP-SGD (Algorithm \ref{alg:DP-SGD}) with the loss function given by the negative local free energy. If this scheme were to be used, the client is protected against all parties as any external communication, namely variational distribution updates, will have been produced using a method which protects the data-points in each shard. 
+
+For clarity, assume that a data-shard is comprised of a number of data-points i.e. $\bm{X}_m = \lbrace \bm{x}^{(m)}_1, \ldots, \bm{x}^{(m)}_{N_m} \rbrace$. This scheme would limit the contribution of each $\bm{x}^{(m)}_i$ to the update of the variational distribution from each client and add noise corresponding to the the maximum possible contribution of each data-point.  
+
+Advantages of this scheme include there being no requirement for encryption on outgoing client messages and no authentication requirements i.e. the client would not need to ensure that it is indeed communicating with the a trustworthy parameter server. Additionally, each client is able to tune individual privacy settings depending on the level of protection desired and considerations from their local dataset. 
+
+Fig. \ref{fig:design:datapointBarrier} summarises the privacy and trust barriers implied by the data-point level DP-PVI algorithm. 
+\begin{figure}
+	\centering
+	\includestandalone[width=0.6\textwidth]{Design/Figs/TikZ/datapointBarrier}
+	\caption{Privacy barriers assumed by the datapoint level DP-PVI algorithm. }
+	\label{fig:design:datapointBarrier}
+\end{figure}
+
+\subsection{Dataset Level DP-PVI}
+Recalling the fundamental definition of differential privacy (Definition \ref{def:epdp}), an alternative method of constructing DP-PVI is to consider one `entry' of the dataset as an \textbf{entire data shard}, limiting the total contribution of each data shard to the variational distribution and then including corrupting noise. 
+
+Assume that the variational distribution is parametrised with parameters $\bm{\lambda} \in \Lambda$ and denote this variational distribution as $q(\bm{\theta}| \bm{\lambda})$. We now present the Dataset Level DP-PVI algorithm, detailed in Algorithm \ref{alg:dataset-DPPVI}, which is a key contribution of this work.
+
+\begin{algorithm}
+	\caption{Dataset Level DP-PVI}
+	\label{alg:dataset-DPPVI}
+	\hspace*{\algorithmicindent} \textbf{Input:} Partitioned Dataset $\altmathcal{D} = \lbrace \bm{X}_1, \ldots, \bm{X}_M \rbrace$, Prior $\bm{\lambda} ^{(p)}$, Learning Rate $\alpha \in [0, 1]$,\\ 
+	\hspace*{\algorithmicindent} Clipping Bound $C$, DP Noise Scale $\sigma$
+	\begin{algorithmic}[1] % The number tells where the line numbering should start
+		\State Initialise approximate likelihoods: \begin{align}
+		t_m^{(0)}(\bm{\theta}) \leftarrow 1\ \forall m 
+		\end{align} 
+		\State Initialise parameters of variational distribution:
+		\begin{align}
+		\bm{\lambda}^{(0)} \leftarrow \bm{\lambda}^{(p)}
+		\end{align} 
+		\For {$i = 1, 2, \ldots, \text{until convergence}$}
+			\For {$j = 1, 2, \ldots, M$} \Comment{For each client}
+			\State Compute new parameters for this client:
+			\begin{align}
+			\bm{\lambda}_j \leftarrow  \mathop{\mathrm{argmax}}_{\bm{\lambda} \in \Lambda} \int q(\bm{\theta} |\bm{\lambda}) \ln \frac{q(\bm{\theta} |\bm{\lambda}^{(i-1)}) p(\bm{X}_{j}|\bm{\theta})}{q(\bm{\theta}|\bm{\lambda}) t_{j}^{(i-1)}(\bm{\theta})}\ d\bm{\theta} \label{eq:param_local_free_energy_optimisation}
+			\end{align}
+			
+			\State $\Delta \bm{\lambda}_j \leftarrow \bm{\lambda}_j  - \bm{\lambda}^{(i-1)}$
+			\State Clip and corrupt update:
+			\begin{align}
+			\tilde{\Delta} \bm{\lambda}_j &= \alpha \cdot  \Bigg[ \frac{\Delta \bm{\lambda}_j }{\max (1, || \Delta \bm{\lambda}_j||_2 / C )} + \frac{\sigma C}{\sqrt{M}}\bm{z} \Bigg] \nonumber \\
+			\text{ where } z_i &\stackrel{iid}{\sim} \altmathcal{N}(0, 1) 
+			 \label{eq:dp-pvi:client-update}
+			\end{align}
+			\State $\bm{\lambda}_j \leftarrow  \bm{\lambda}^{(i)} + \tilde{\Delta} \bm{\lambda}_j$
+			\State Update the approximate likelihood:
+			\begin{align}
+			t_{j}^{(i)}(\bm{\theta}) \leftarrow \frac{q(\bm{\theta}|\bm{\lambda}_j)}{q(\bm{\theta}|\bm{\lambda}^{(i-1)})} t_{j}^{(i-1)}(\bm{\theta})
+			\end{align}
+			\EndFor
+			\State Compute new global parameters:
+			\begin{align}
+			\bm{\lambda}^{(i)} = \bm{\lambda}^{(i-1)}  + \sum_{j=1}^M \tilde{\Delta} \bm{\lambda}_j \label{eq:dp-pvi:central-update}
+			\end{align}
+			\State Update privacy cost using the Moments Accountant. 
+			\EndFor
+	\end{algorithmic}
+\end{algorithm}
+
+It is instructive to consider the effective update rule at the parameter server. Noting that the sum of Gaussian random variables is also Gaussian, Equations \eqref{eq:dp-pvi:client-update} and \eqref{eq:dp-pvi:central-update} are equivalent to the following update rule:
+\begin{align}
+	\bm{\lambda}^{(i)} &= \bm{\lambda}^{(i-1)}  + \alpha \cdot \Bigg[ \sum_{j=1}^M \frac{\Delta \bm{\lambda}_j }{\max (1, || \Delta \bm{\lambda}_j||_2 )} \Bigg]+ \sigma C \bm{z} \nonumber \\
+	\text{with } z_k &\stackrel{iid}{\sim} \altmathcal{N}(0, 1)
+	 \label{eq:equiv-update}
+\end{align}
+which uses the Gaussian mechanism to produce a differentially private estimate of the parameter update and applies a partial update. Unlike in gradient descent methods, the value of the learning rate is meaningful as a full parameter update (neglectinag clipping) would give the current (noisy) best guess of the optimal parameter settings whilst in gradient descent methods, the learning rate controls step sizes without, \emph{a priori}, any indication of the optimal step size. Note that the learning rate is in the range $[0, 1]$. 
+
+The rationale behind distributing the central noise across each client and performing clipping locally is to ensure that each client is able to accurately track their contribution to the global variational distribution; if clipping and noise corruption occurred centrally, when calculating the new global parameters, the local approximate likelihood terms would become out-of-sync with the global variational distribution, resulting incorrect parameter values and poor model performance. This is similar to the technique used in \citep{geyer2017differentially}, with the key difference that this occurs within each client.
+
+A variant on this scheme would instead have each client transmit exact parameter updates to the central parameter server. Clipping and noise corruption would then occur at the server, \textbf{which would be required to recalculate the approximate likelihood term for each client}. Whilst the clipping of the update from each client naturally corresponds to an approximate likelihood which the server would then have to recalculate, there is freedom in precisely how the noise is incorporated into the client approximate likelihoods. 
+
+Note that Eq. \eqref{eq:dp-pvi:client-update} is also applying the Gaussian mechanism to the update from each client as the clipping fixes the $\ell_2$ sensitivity. Recalling Eq. \eqref{eq:litreview-GaussianMech}, it can be seen that for fixed $\delta$, the division of the variance by $M$ weakens the privacy guarantee by a factor of $\sqrt{M}$. Thus for large $M$, the messages from client to server will effectively be insecure, meaning that \textbf{this proposal relies on the existence of secure encryption methods} to prevent the adversary intercepting these messages. 
+
+The distribution of noise has additional consequences. Firstly, updates from several clients must be performed at once; if updates are performed using messages from one client only, it is possible that other clients will be able to infer sensitive information from the variational distribution update. There is freedom in choosing how many clients participate at each update. Noting that the variance of noise added is independent of the number of clients, updating using a smaller number of clients corresponds to smaller signal-to-noise ratios but the update from each client will take into account the information from other clients better (as the updates from each client will affect the updates which other clients provide). Secondly, since each client is aware of the noise they have contributed, they would be able to remove this noise from the global parameter update. Therefore, from the point of view of a client, the variance of the noise protecting other clients is reduced by a factor of $\frac{M-1}{M}$. For a large number of clients, \textbf{assuming that each concealed adversary is not in collusion}, this will have a small effect on the privacy guarantees provided. However, this raises privacy concerns in cases where it is possible that the adversary is able to conceal themselves and place multiple clients in the system. For instance, an incredibly simplified example is a situation where the clients consist of one genuine client and a large number of concealed adversaries in collusion. In this case, the adversaries would be able to collude to remove almost all of the noise added by the parameter server rendering the sensitive information of the genuine client insecure. 
+
+Additionally, we remark that this techniques requires that each client is able to ensure the authenticity of the parameter server; if the adversary masqueraded as the parameter server, it could simply inform each client that there are a very large number of clients, after which access to each message will enable the adversary to recover sensitive information about each client. Therefore, it is suggested that this technique should only be applied in situations where it is difficult for an adversary to conceal `enemy' clients.
+
+Fig. \ref{fig:design:datasetBarrier} summaries the trust and privacy barrier assumptions implied by the dataset level DP-PVI algorithm. 
+
+\begin{figure}
+	\centering
+	\includestandalone[width=0.65\textwidth]{Design/Figs/TikZ/datasetBarrier}
+	\caption{Privacy Barriers assumed by the dataset level DP-PVI algorithm. }
+	\label{fig:design:datasetBarrier}
+\end{figure}
+
+\subsection{Comparison of Dataset and Datapoint Level Protection}
+\label{sec:comparison}
+There are significant differences between which parties are assumed to be trustworthy between the dataset and data-point level protection schemes. In practice, if choosing between these schemes, this will be a key factor in assessing which scheme is appropriate. 
+
+Besides the differences in implied trust and privacy barriers, there is a crucial difference in the type of protection offered by each scheme. The data-point level protection scheme considers neighbouring datasets to be those which have differing individual data-points whilst the dataset level allows for differences in an entire data-shard. We now mathematically compare the protection offered by these schemes. 
+
+Let $\altmathcal{D} = \lbrace \bm{x}_i \rbrace_{i=1}^N$ and let $\altmathcal{D}^{(t)}$ denote a dataset which differs from $\altmathcal{D}$ in $t$ entries. Consider the definition of data-point level differential privacy i.e. assume that neighbouring datasets have one value of $\bm{x}_i$ that differs:
+\begin{align}
+\text{Pr}(\altmathcal{A(D)} \in S) &\leq e^\epsilon \text{Pr}(\altmathcal{A(D}^{(1)}) \in S) + \delta \nonumber \\
+&\leq e^{2\epsilon} \text{Pr}(\altmathcal{A(D}^{(2)}) \in S) + e^\epsilon \delta + \delta \nonumber \\
+&\vdots \nonumber \\
+&\leq e^{t\epsilon} \text{Pr}(\altmathcal{A(D}^{(t)}) \in S) + \delta \Big[ 1 + e^{\epsilon} + e^{2\epsilon} + \ldots +  e^{(t-1)\epsilon} \Big] \nonumber \\
+&\leq e^{t\epsilon} \text{Pr}(\altmathcal{A(D}^{(t)}) \in S) + \delta \frac{1-e^{t\epsilon}}{1-e^{\epsilon}}
+\end{align}
+Therefore, if we protect each data-point with $(\epsilon, \delta)$ differentially privacy, a group of $t$ data-points is protected with $(t \epsilon, \delta (1-e^{t\epsilon})/({1-e^{\epsilon}}))$ differential privacy. The dataset level DP-PVI approach can be regarded as providing an $(\epsilon, \delta)$ guarantee on any changes within each shard which is itself made up of $N$ data-points. Whilst the above analysis cannot be used to convert the group $(\epsilon, \delta)$ pair into a $(\epsilon, \delta)$ pair at the data-point level, we can interpret a dataset level $(\epsilon, \delta)$ guarantee as being `stronger' than the equivalent data-point level protection; the data-point level protection schemes (probabilistically) bounds the magnitude of the privacy loss for events which are a subset of the events considered by the dataset level protection scheme. Intuitively, it ought to be more difficult to disguise changes of an entire data-shard compared to a single data-point, matching the above analysis which shows that data-point level $(\epsilon, \delta)$ protection corresponds to a weaker privacy guarantee. 
+
+Additionally, we remark that in cases where the each data-point in a client's data shard corresponds to an individual, the data-point level differential privacy approach is the more natural way to quantify privacy offered; in this case, the $(\epsilon, \delta)$ guarantee corresponds directly to outcomes being `similar' for datasets which neighbour in the sense that only the specific information about a single individual is different. Similarly for the case where an entire data shard corresponds to a single user, the data-point level approach seems to be excessive and the dataset level approach is more natural. 
+
+Furthermore, note that the dataset level DP-PVI scheme applies the same clipping bound to all of the workers and applies corrupting noise with a fixed standard deviation. In the case where the data is distributed differently at each client (i.e. inhomogeneous), the magnitude of parameter updates from each worker could be very different and applying the same clipping bound to each of the workers creates an inefficiency. In contrast, relevant parameters can be tuned for each worker individually for the data-point level DP-PVI algorithm, meaning that this technique is better suited for inhomogeneous data.

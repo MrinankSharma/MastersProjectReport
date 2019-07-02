@@ -1,0 +1,52 @@
+ \documentclass[crop, tikz]{standalone}
+\usepackage{amsmath}
+\usepackage{bm}
+\usetikzlibrary{positioning}
+\usetikzlibrary{decorations.text}
+\usetikzlibrary{decorations.pathmorphing}
+\usetikzlibrary{shapes,snakes}
+\begin{document}  
+\tikzstyle{client} = [fill=blue!20, rounded corners, 
+text centered, circle, minimum size = 6em, text width=6em]
+\tikzstyle{server} = [draw, fill=red!30, rounded corners, 
+text centered, rectangle, minimum size = 6em, text width = 10em]
+\tikzstyle{adv} = [draw, fill=red!30, align=center,
+text centered, ellipse, minimum size = 4em, text width = 4em]
+\tikzstyle{info} = [draw, fill=orange, fill opacity=0.2, rounded corners, 
+text centered, rectangle, minimum height = 8em, align=left,
+text width = 8em]
+\begin{tikzpicture}[scale=0.7, every node/.style={transform shape}]
+\node [server] (srv) at (0:0) {\textbf{Untrustworthy Parameter Server} \\ $q(\bm{\theta}) \simeq p(\bm{\theta}| \mathcal{D})$};
+\node[info] (info1) at (150:6) {};
+\node [client] (cl1) at (150:6) {Client \\\vspace{0.5em} Local Data Shard $\bm{X}_m$};
+\node [text centered, rectangle, minimum size = 4em, text width = 12em, yshift=10pt] (textNode) at (info1.north) {\textbf{Local Privacy Barrier}};
+\node[info] (info2) at (90:6) {};
+\node [client] (cl2) at (90:6) {Client \\\vspace{0.5em} Local Data Shard $\bm{X}_m$};;
+\node [text centered, rectangle, minimum size = 4em, text width = 12em, yshift=10pt] (textNode) at (info2.north) {\textbf{Local Privacy Barrier}};
+\node[info] (info3) at (210:6) {};
+\node [text centered, rectangle, minimum size = 4em, text width = 12em, yshift=10pt] (textNode) at (info3.north) {\textbf{Local Privacy Barrier}};
+\node [client] (cl3) at (210:6) {Client \\\vspace{0.5em} Local Data Shard $\bm{X}_m$};
+\node [client, fill=red!30, ellipse, draw] (cl4) at (270:6) {Concealed Adversary \\\vspace{0.5em} Local Data Shard $\bm{X}_m$};;
+\node[adv] (adv) at (0:6) {Adversary};
+\draw [thick, ->] ([shift={(-0.2em,0)}]cl1.east) arc (0:350:3.8em);
+\draw [thick, ->] ([shift={(-0.2em,0)}]cl2.east) arc (0:350:3.8em);
+\draw [thick, ->] ([shift={(-0.2em,0)}]cl3.east) arc (0:350:3.8em);
+\draw [thick,transform canvas={xshift=-5pt},  ->, shorten >= 8pt, shorten <= 8pt, color=red] (srv.north) to node [text width=2.5cm,midway,below=0.1em, scale = 1,xshift=-2em, align=center] {Push $q(\bm{\theta})$ to Client} (cl1.east);
+\draw [thick,->, shorten >= 8pt, shorten <= 8pt, color=blue] (cl1.east) to node [text width=2.5cm,midway,above=1.5em, scale = 1, xshift=10pt, align=center] {Push Updated  $q(\bm{\theta})$ to Server}  (srv.north);
+
+\draw [thick, transform canvas={xshift=5pt},  ->, shorten >= 8pt, shorten <= 8pt] (cl2.south) to (srv.north);
+\draw [thick, ->, shorten >= 8pt, shorten <= 8pt] (srv.north) to (cl2.south);
+
+\draw [thick, transform canvas={xshift=-5pt},  ->, shorten >= 8pt, shorten <= 8pt] (srv.south) to (cl3.east);
+\draw [thick, ->, shorten >= 8pt, shorten <= 8pt] (cl3.east) to (srv.south);
+
+\draw [thick, transform canvas={xshift=5pt},  ->, shorten >= 8pt, shorten <= 8pt] (srv.south) to (cl4.north);
+\draw [thick,->, shorten >= 8pt, shorten <= 8pt] (cl4.north) to (srv.south);
+
+\draw [thick, <->, shorten >= 8pt, shorten <= 8pt] (adv.west) to node [text width=2.5cm,midway,below=0.5em, scale = 1, align=center] {Unlimited Access to $q(\bm{\theta})$} (srv.east);
+
+\draw[thick, ->,  shorten >= 4pt, shorten <= 8pt, red, dashed] (cl2.south) ++(8pt, 0) to [out=270, in=90] (adv.north);
+
+\node [text centered, rectangle, minimum size = 4em, text width = 10em, color=red] (textNode) at (4, 3.5) {Adversary May Intercept Messages};
+\end{tikzpicture} 
+\end{document}

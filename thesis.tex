@@ -1,7 +1,7 @@
 % ******************************* PhD Thesis Template **************************
 % Please have a look at the README.md file for info on how to use the template
 
-\documentclass[a4paper,12pt,customfont,custombib,draft,index,custommargin,oneside]{Classes/PhDThesisPSnPDF}
+\documentclass[a4paper,12pt,customfont,custombib,print,index,custommargin]{Classes/PhDThesisPSnPDF}
 
 % ******************************************************************************
 % ******************************* Class Options ********************************
@@ -93,7 +93,7 @@
 
 \ifdefineAbstract
  \pagestyle{empty}
- \includeonly{Declaration/declaration, Abstract/abstract}
+ \includeonly{Acknowledgement/acknowledgement}
 \fi
 
 % ***************************** Chapter Mode ***********************************
@@ -103,7 +103,7 @@
 % To use choose `chapter' option in the document class
 
 \ifdefineChapter
- \includeonly{Chapter3/chapter3}
+	\includeonly{Design/design}
 \fi
 
 % ******************************** Front Matter ********************************
@@ -112,10 +112,10 @@
 \frontmatter
 
 \maketitle
-
-%\include{Dedication/dedication}
-%\include{Declaration/declaration}
-%\include{Acknowledgement/acknowledgement}
+%
+%%\include{Dedication/dedication}
+%%\include{Declaration/declaration}
+\include{Acknowledgement/acknowledgement}
 \include{Abstract/abstract}
 
 % *********************** Adding TOC and List of Figures ***********************
@@ -137,6 +137,7 @@
 \include{Design/design}
 \include{Results/results}
 \include{Conclusions/conclusions}
+
 %\include{Chapter1/chapter1}
 %\include{Chapter2/chapter2}
 %\include{Chapter3/chapter3}
@@ -144,7 +145,6 @@
 %\include{Chapter5/chapter5}
 %\include{Chapter6/chapter6}
 %\include{Chapter7/chapter7}
-
 
 
 % ********************************** Back Matter *******************************

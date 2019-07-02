@@ -533,7 +533,7 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 4.98	0\\
 5	0\\
 };
-\addlegendentry{$p(\theta| \mathcal{D})$}
+\addlegendentry{$p(\theta| \altmathcal{D})$}
 
 \end{axis}
 
@@ -1061,7 +1061,7 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 -0.02	1.34040684235769e-300\\
 0	1.08022203987336e-309\\
 };
-\addlegendentry{$p(\theta| \mathcal{D})$}
+\addlegendentry{$p(\theta| \altmathcal{D})$}
 
 \end{axis}
 \end{tikzpicture}%
